@@ -83,6 +83,9 @@ async function main() {
     signature: "0x",
   };
 
+  const userOpHash = await entryPoint.getUserOpHash(packedUserOp);
+  packedUserOp.signature = signer0.signMessage(ethers.getBytes(userOpHash));
+
   console.log("Account exists:", !shouldUseInitCode);
   console.log("Using initCode:", shouldUseInitCode);
   console.log("UserOp details:", {
