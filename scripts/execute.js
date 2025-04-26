@@ -3,6 +3,7 @@ const { ethers } = require("hardhat");
 const Factory_Nonce = 1;
 const AF_address = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 const EP_address = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const PM_address = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
 
 async function main() {
   const epcode = await ethers.provider.getCode(EP_address);
@@ -20,18 +21,6 @@ async function main() {
   console.log("Both contracts exist");
 
   const entryPoint = await ethers.getContractAt("EntryPoint", EP_address);
-
-  // Fund the EntryPoint contract
-  const entryPointBalance = await ethers.provider.getBalance(EP_address);
-  if (entryPointBalance < ethers.parseEther("1")) {
-    console.log("Funding EntryPoint contract...");
-    const fundTx = await signer0.sendTransaction({
-      to: EP_address,
-      value: ethers.parseEther("1"),
-    });
-    await fundTx.wait();
-    console.log("EntryPoint funded");
-  }
 
   const sender = ethers.getCreateAddress({
     from: AF_address,
@@ -71,7 +60,16 @@ async function main() {
   const accountCode = await ethers.provider.getCode(sender);
   const shouldUseInitCode = accountCode === "0x";
 
-  await entryPoint.depositTo(sender, { value: ethers.parseEther("100") });
+  // await entryPoint.depositTo(PM_address, { value: ethers.parseEther("100") });
+
+  // Pack paymasterAndData correctly
+  const paymasterVerificationGasLimit = 100000;
+  const paymasterPostOpGasLimit = 100000;
+  const paymasterAndData = ethers.concat([
+    PM_address,
+    ethers.zeroPadValue(ethers.toBeHex(paymasterVerificationGasLimit), 16),
+    ethers.zeroPadValue(ethers.toBeHex(paymasterPostOpGasLimit), 16),
+  ]);
 
   const packedUserOp = {
     sender, //smart account address
@@ -81,7 +79,7 @@ async function main() {
     accountGasLimits: accountGasLimits,
     preVerificationGas: 50_000,
     gasFees: gasFees,
-    paymasterAndData: "0x",
+    paymasterAndData: paymasterAndData,
     signature: "0x",
   };
 
