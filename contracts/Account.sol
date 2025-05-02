@@ -11,7 +11,10 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 contract Account is IAccount {
     address public owner;
     uint256 public count;
-
+    
+    // Add this to receive ETH
+    receive() external payable {}
+    
     constructor(address _owner) {
         owner = _owner;
     }
@@ -27,9 +30,28 @@ contract Account is IAccount {
         );
         return owner == recovered ? 0 : 1;
     }
-
+    
+    // Keep the original execute for backward compatibility
     function execute() external {
         count++;
+    }
+    
+    // Add new function to execute arbitrary calls
+    function executeTransaction(
+        address target,
+        uint256 value,
+        bytes calldata data
+    ) external returns (bytes memory) {
+        // Only EntryPoint can call this
+        require(msg.sender == address(0x5FbDB2315678afecb367f032d93F642f64180aa3), "Only EntryPoint can call");
+        
+        count++; // Maintain counter functionality
+        
+        // Execute the requested transaction
+        (bool success, bytes memory result) = target.call{value: value}(data);
+        require(success, "Transaction execution failed");
+        
+        return result;
     }
 }
 
